@@ -373,3 +373,218 @@ body {
     }
   }
 }
+/* ============================================
+ * LingoPoet 样式层
+ * ============================================ */
+:root {
+	--lp-paper: 247 241 227;
+	--lp-paper-deep: 237 227 200;
+	--lp-ink: 43 34 23;
+	--lp-ink-soft: 107 91 68;
+	--lp-accent: 180 99 60;
+	--lp-accent-soft: 232 201 169;
+	--lp-line: 217 203 175;
+	--lp-gold: 196 154 67;
+	--lp-rose: 198 106 90;
+	--lp-emerald: 92 131 102;
+	--lp-sepia: 120 80 44;
+}
+
+html, body, #root { height: 100%; }
+body.lp-body { background: rgb(var(--lp-paper)); color: rgb(var(--lp-ink)); font-family: "Noto Serif SC", "Cormorant Garamond", "Source Han Serif SC", serif; }
+
+/* ---------- Shell ---------- */
+.lp-shell { min-height: 100vh; display: grid; grid-template-columns: 240px 1fr; background: rgb(var(--lp-paper)); color: rgb(var(--lp-ink)); font-family: "Noto Serif SC", "Cormorant Garamond", serif; position: relative; }
+.lp-shell::before { content: ""; position: fixed; inset: 0; pointer-events: none; background-image: radial-gradient(rgba(120,80,44,0.05) 1px, transparent 1px); background-size: 22px 22px; opacity: 0.55; z-index: 0; }
+.lp-sidebar { position: sticky; top: 0; height: 100vh; padding: 28px 22px; background: rgba(var(--lp-paper-deep), 0.55); border-right: 1px solid rgba(var(--lp-line), 0.65); display: flex; flex-direction: column; z-index: 1; }
+.lp-brand { display: flex; flex-direction: column; gap: 2px; margin-bottom: 36px; cursor: pointer; }
+.lp-brand-mark { font-family: "Dancing Script", cursive; font-size: 30px; font-weight: 700; color: rgb(var(--lp-accent)); line-height: 1; }
+.lp-brand-sub { font-family: "Cormorant Garamond", serif; font-size: 11px; letter-spacing: 0.22em; color: rgba(var(--lp-ink-soft), 0.85); text-transform: uppercase; }
+.lp-nav { display: flex; flex-direction: column; gap: 4px; }
+.lp-nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; color: rgb(var(--lp-ink-soft)); font-size: 15px; text-decoration: none; transition: all 0.18s ease; font-family: "Noto Serif SC", serif; }
+.lp-nav-item:hover { background: rgba(var(--lp-accent-soft), 0.35); color: rgb(var(--lp-ink)); }
+.lp-nav-item.is-active { background: rgba(var(--lp-accent), 0.12); color: rgb(var(--lp-accent)); font-weight: 600; }
+.lp-nav-item svg { width: 18px; height: 18px; }
+.lp-nav-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.lp-avatar-sm { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, rgb(var(--lp-accent)), rgb(var(--lp-gold))); color: white; display: grid; place-items: center; font-family: "Dancing Script", cursive; font-size: 18px; }
+
+.lp-main { padding: 40px 56px 60px; position: relative; z-index: 1; max-width: 1200px; }
+.lp-main-icon { position: absolute; top: 32px; right: 48px; width: 56px; height: 56px; color: rgba(180,99,60,0.18); }
+
+/* ---------- Typography ---------- */
+.lp-page-title { font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 38px; font-weight: 600; color: rgb(var(--lp-ink)); line-height: 1.15; letter-spacing: 0.01em; margin: 0; word-break: break-word; }
+.lp-page-title em { font-style: italic; color: rgb(var(--lp-accent)); font-family: "Cormorant Garamond", serif; }
+.lp-page-sub { font-family: "Caveat", "Noto Serif SC", cursive; font-size: 18px; color: rgba(var(--lp-ink-soft), 0.95); margin: 6px 0 0; }
+.lp-h2 { font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 26px; font-weight: 600; color: rgb(var(--lp-ink)); margin: 0; }
+.lp-h3 { font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 20px; font-weight: 600; color: rgb(var(--lp-ink)); margin: 0; }
+.lp-handwrite { font-family: "Caveat", "Noto Serif SC", cursive; font-size: 17px; color: rgb(var(--lp-sepia)); }
+.lp-handwrite-lg { font-family: "Caveat", "Noto Serif SC", cursive; font-size: 18px; color: rgb(var(--lp-sepia)); }
+.lp-script { font-family: "Dancing Script", cursive; color: rgb(var(--lp-accent)); font-size: 20px; }
+.lp-script-sm { font-family: "Dancing Script", cursive; color: rgb(var(--lp-accent)); font-size: 18px; }
+.lp-script-inline { font-family: "Dancing Script", cursive; color: rgb(var(--lp-accent)); font-size: 22px; }
+.lp-muted { color: rgb(var(--lp-ink-soft)); }
+.lp-label { color: rgb(var(--lp-ink-soft)); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+.lp-serif { font-family: "Cormorant Garamond", "Noto Serif SC", serif; }
+.lp-original { font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 15px; color: rgb(var(--lp-ink)); }
+.lp-chapter-title { font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 17px; color: rgb(var(--lp-ink)); }
+.lp-file-name { font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgb(var(--lp-ink)); }
+.lp-numeric { font-family: "Cormorant Garamond", serif; font-size: 22px; font-weight: 600; color: rgb(var(--lp-ink)); }
+.lp-numeric-lg { font-size: 28px; color: rgb(var(--lp-accent)); }
+.lp-numeric-sm { font-family: "Cormorant Garamond", serif; font-size: 16px; color: rgb(var(--lp-ink)); }
+.lp-preset-title { font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 16px; font-weight: 600; }
+.lp-note-translated { font-family: "Caveat", "Noto Serif SC", cursive; font-size: 16px; color: rgb(var(--lp-sepia)); }
+
+/* ---------- Containers ---------- */
+.lp-paper { background: rgb(var(--lp-paper-deep)); border: 1px solid rgba(var(--lp-line), 0.8); border-radius: 6px; padding: 28px 32px; box-shadow: 0 2px 0 rgba(0,0,0,0.02), 0 12px 30px -18px rgba(120,80,44,0.35); position: relative; }
+.lp-paper-torn { clip-path: polygon(0 4%, 2% 0, 8% 3%, 14% 0, 22% 4%, 30% 1%, 38% 3%, 48% 0, 58% 3%, 68% 1%, 78% 4%, 86% 0, 94% 3%, 100% 2%, 100% 96%, 96% 100%, 88% 97%, 80% 100%, 70% 98%, 60% 100%, 50% 98%, 40% 100%, 30% 98%, 20% 100%, 10% 97%, 4% 100%, 0 98%); }
+.lp-paper-flush { padding: 0; overflow: hidden; }
+.lp-card { background: rgba(var(--lp-paper), 0.85); border: 1px solid rgba(var(--lp-line), 0.75); border-radius: 12px; padding: 20px 22px; transition: transform 0.22s ease, box-shadow 0.22s ease; }
+.lp-card:hover { transform: translateY(-2px); box-shadow: 0 18px 38px -24px rgba(120,80,44,0.4); }
+.lp-card-btn { text-align: left; cursor: pointer; background: rgba(var(--lp-paper), 0.85); border: 1px solid rgba(var(--lp-line), 0.75); border-radius: 12px; padding: 16px; transition: all 0.18s; width: 100%; font-family: "Noto Serif SC", serif; }
+.lp-card-btn:hover { background: rgba(var(--lp-accent-soft), 0.3); }
+.lp-card-btn.is-active { border: 1.5px solid rgb(var(--lp-accent)); background: rgba(var(--lp-accent-soft), 0.4); }
+.lp-card-project { cursor: pointer; display: flex; flex-direction: column; gap: 10px; }
+.lp-stat-card { padding: 10px 16px; min-width: 100px; }
+.lp-hint-card { background: rgba(196,154,67,0.08); border: 1px solid rgba(196,154,67,0.35); display: flex; align-items: flex-start; gap: 10px; }
+.lp-empty-state { padding: 24px; text-align: center; color: rgb(var(--lp-ink-soft)); font-family: "Cormorant Garamond", serif; font-size: 16px; }
+
+/* ---------- Buttons ---------- */
+.lp-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; font-family: "Noto Serif SC", serif; font-size: 14px; font-weight: 500; border: 1px solid rgba(var(--lp-line), 0.9); background: rgba(var(--lp-paper), 0.9); color: rgb(var(--lp-ink)); cursor: pointer; transition: all 0.18s ease; }
+.lp-btn:hover:not(:disabled) { background: rgba(var(--lp-accent-soft), 0.45); border-color: rgb(var(--lp-accent)); color: rgb(var(--lp-accent)); }
+.lp-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.lp-btn-sm { padding: 6px 12px; font-size: 12px; }
+.lp-btn-primary { background: linear-gradient(135deg, rgb(var(--lp-accent)), rgb(var(--lp-sepia))); color: #FBF5E4; border-color: transparent; font-weight: 600; }
+.lp-btn-primary:hover:not(:disabled) { filter: brightness(1.08); color: #FFF; }
+.lp-btn-ghost { background: transparent; border-color: transparent; color: rgb(var(--lp-ink-soft)); }
+.lp-btn-ghost:hover:not(:disabled) { color: rgb(var(--lp-accent)); background: rgba(var(--lp-accent-soft), 0.3); border-color: transparent; }
+.lp-btn-icon { padding: 6px; }
+.lp-field-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: 0; cursor: pointer; color: rgb(var(--lp-ink-soft)); padding: 4px; }
+
+/* ---------- Inputs ---------- */
+.lp-input { width: 100%; padding: 10px 14px; background: rgba(var(--lp-paper), 0.95); border: 1px solid rgba(var(--lp-line), 0.9); border-radius: 10px; font-family: "Noto Serif SC", serif; font-size: 14px; color: rgb(var(--lp-ink)); outline: none; transition: border-color 0.18s; }
+.lp-input:focus { border-color: rgb(var(--lp-accent)); box-shadow: 0 0 0 3px rgba(var(--lp-accent-soft), 0.35); }
+.lp-input-left { padding-left: 36px; }
+.lp-input-right { padding-right: 44px; }
+.lp-input-sm { padding: 6px 10px; font-size: 14px; }
+.lp-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23B4633C' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+.lp-field { position: relative; }
+.lp-field-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.lp-field-icon.is-accent { color: rgb(var(--lp-accent)); }
+.lp-field-icon.is-muted { color: rgb(var(--lp-ink-soft)); }
+
+/* ---------- Pills & Chips ---------- */
+.lp-pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; background: rgba(var(--lp-paper), 0.95); border: 1px solid rgba(var(--lp-line), 0.9); font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 14px; color: rgb(var(--lp-ink-soft)); cursor: pointer; transition: all 0.18s; }
+.lp-pill:hover { background: rgba(var(--lp-accent-soft), 0.4); }
+.lp-pill.is-active { background: rgb(var(--lp-accent)); color: #FBF5E4; border-color: rgb(var(--lp-accent)); }
+.lp-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-size: 12px; font-weight: 500; letter-spacing: 0.04em; border: 1px solid; }
+.lp-chip-lg { font-size: 13px; padding: 6px 16px; }
+.lp-chip-xs { padding: 2px 10px; }
+.lp-chip-amber { background: rgba(var(--lp-gold), 0.14); color: rgb(var(--lp-gold)); border-color: rgba(var(--lp-gold), 0.45); }
+.lp-chip-green { background: rgba(var(--lp-emerald), 0.14); color: rgb(var(--lp-emerald)); border-color: rgba(var(--lp-emerald), 0.45); }
+.lp-chip-rose { background: rgba(var(--lp-rose), 0.14); color: rgb(var(--lp-rose)); border-color: rgba(var(--lp-rose), 0.45); }
+.lp-chip-ink { background: rgba(var(--lp-ink-soft), 0.1); color: rgb(var(--lp-ink-soft)); border-color: rgba(var(--lp-line), 0.8); }
+
+/* ---------- Progress ---------- */
+.lp-progress { position: relative; height: 6px; background: rgba(var(--lp-line), 0.6); border-radius: 999px; overflow: hidden; }
+.lp-progress-lg { height: 10px; }
+.lp-progress-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, rgb(var(--lp-accent)), rgb(var(--lp-gold))); border-radius: 999px; transition: width 0.3s; }
+
+/* ---------- Table ---------- */
+.lp-table { width: 100%; border-collapse: collapse; font-family: "Noto Serif SC", serif; }
+.lp-table thead th { text-align: left; padding: 12px 16px; background: rgba(var(--lp-paper-deep), 0.8); color: rgb(var(--lp-ink-soft)); font-family: "Cormorant Garamond", "Noto Serif SC", serif; font-weight: 600; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid rgba(var(--lp-line), 0.9); }
+.lp-table tbody td { padding: 14px 16px; border-bottom: 1px solid rgba(var(--lp-line), 0.5); font-size: 14px; color: rgb(var(--lp-ink)); vertical-align: middle; }
+.lp-table tbody tr:hover { background: rgba(var(--lp-accent-soft), 0.18); }
+.lp-th-100 { width: 100px; }
+.lp-th-120 { width: 120px; }
+.lp-th-120-right { width: 120px; text-align: right; }
+.lp-td-right { text-align: right; }
+
+/* ---------- Divider / Status ---------- */
+.lp-divider { display: flex; align-items: center; gap: 12px; color: rgba(var(--lp-ink-soft), 0.7); font-family: "Cormorant Garamond", serif; font-style: italic; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; margin: 18px 0; }
+.lp-divider::before, .lp-divider::after { content: ""; flex: 1; height: 1px; background: rgba(var(--lp-line), 0.9); }
+.lp-error { padding: 10px 14px; border-radius: 10px; background: rgba(var(--lp-rose), 0.12); border: 1px solid rgba(var(--lp-rose), 0.5); color: rgb(var(--lp-rose)); font-size: 13px; }
+.lp-success { padding: 10px 14px; border-radius: 10px; background: rgba(var(--lp-emerald), 0.12); border: 1px solid rgba(var(--lp-emerald), 0.5); color: rgb(var(--lp-emerald)); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.lp-loader-center { display: flex; justify-content: center; padding: 80px; }
+.lp-loader-inline { padding: 40px; text-align: center; }
+
+/* ---------- Upload ---------- */
+.lp-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 36px 24px; border: 2px dashed rgba(180,99,60,0.45); border-radius: 14px; background: rgba(255,253,246,0.65); cursor: pointer; gap: 10px; position: relative; font-family: "Cormorant Garamond", "Noto Serif SC", serif; }
+.lp-upload-main { font-size: 20px; color: rgb(var(--lp-ink)); }
+.lp-upload-hint { font-size: 12px; color: rgb(var(--lp-ink-soft)); }
+.lp-hidden { display: none; }
+
+/* ---------- Grids ---------- */
+.lp-grid { display: grid; gap: 16px; }
+.lp-grid-cards { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.lp-grid-preset { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.lp-grid-kpi { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 8px; }
+.lp-grid-quality { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.lp-kpi { padding: 12px 14px; text-align: center; background: rgba(var(--lp-paper), 0.85); border: 1px solid rgba(var(--lp-line), 0.75); border-radius: 12px; }
+.lp-kpi-row { display: flex; justify-content: space-between; padding: 10px 14px; background: rgba(var(--lp-paper), 0.7); border-radius: 10px; }
+
+/* ---------- Toggle ---------- */
+.lp-toggle { position: relative; display: inline-block; width: 42px; height: 22px; cursor: pointer; margin-left: auto; }
+.lp-toggle input { opacity: 0; width: 0; height: 0; }
+.lp-toggle-track { position: absolute; inset: 0; background: rgba(var(--lp-line), 0.9); border-radius: 999px; transition: 0.2s; }
+.lp-toggle input:checked + .lp-toggle-track { background: rgb(var(--lp-accent)); }
+.lp-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #FBF5E4; border-radius: 999px; transition: 0.2s; }
+.lp-toggle input:checked + .lp-toggle-track .lp-toggle-thumb { left: 22px; }
+.lp-ai-row { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(247,241,227,0.6); border-radius: 12px; }
+.lp-ai-label { font-size: 14px; }
+
+/* ---------- Layout utility classes (replace inline styles) ---------- */
+.lp-stack { display: flex; flex-direction: column; }
+.lp-row { display: flex; align-items: center; }
+.lp-row-start { display: flex; align-items: flex-start; }
+.lp-row-baseline { display: flex; align-items: baseline; }
+.lp-wrap { flex-wrap: wrap; }
+.lp-flex1 { flex: 1; min-width: 0; }
+.lp-flex1-140 { flex: 1; min-width: 140px; }
+.lp-flex1-220 { flex: 1; min-width: 220px; }
+.lp-between { justify-content: space-between; }
+.lp-end { justify-content: flex-end; }
+.lp-self-start { align-self: flex-start; }
+.lp-items-end { align-items: flex-end; }
+.lp-max-860 { max-width: 860px; }
+.lp-mt-6 { margin-top: 6px; }
+.lp-mt-8 { margin-top: 8px; }
+.lp-mt-2 { margin-top: 2px; }
+.lp-mt-4 { margin-top: 4px; }
+.lp-mb-2 { margin-bottom: 2px; }
+.lp-mb-6 { margin-bottom: 6px; }
+.lp-m-0 { margin: 0; }
+.lp-mr-4 { margin-right: 4px; }
+.lp-gap-4 { gap: 4px; }
+.lp-gap-6 { gap: 6px; }
+.lp-gap-8 { gap: 8px; }
+.lp-gap-10 { gap: 10px; }
+.lp-gap-12 { gap: 12px; }
+.lp-gap-14 { gap: 14px; }
+.lp-gap-16 { gap: 16px; }
+.lp-gap-18 { gap: 18px; }
+.lp-gap-24 { gap: 24px; }
+.lp-gap-28 { gap: 28px; }
+.lp-gap-36 { gap: 36px; }
+.lp-fs-11 { font-size: 11px; }
+.lp-fs-12 { font-size: 12px; }
+.lp-fs-13 { font-size: 13px; }
+.lp-fs-14 { font-size: 14px; }
+.lp-text-right { text-align: right; }
+.lp-text-center { text-align: center; }
+.lp-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-project-meta { font-size: 11px; margin-top: 2px; }
+.lp-pct-pill { font-size: 12px; display: flex; align-items: center; gap: 4px; font-family: "Cormorant Garamond", serif; }
+.lp-kpi-label-inline { font-size: 12px; }
+.lp-preset-desc { margin: 0; font-size: 12px; }
+.lp-base-hint { font-size: 12px; margin-top: 4px; }
+.lp-key-hint { font-size: 14px; margin-top: 6px; }
+.lp-arrow-icon { margin: 0 8px; color: rgb(var(--lp-accent)); flex-shrink: 0; }
+.lp-hint-icon { margin-top: 2px; flex-shrink: 0; }
+.lp-chapter-progress { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+	.lp-shell { grid-template-columns: 1fr; }
+	.lp-sidebar { position: relative; height: auto; border-right: 0; border-bottom: 1px solid rgba(var(--lp-line), 0.65); }
+	.lp-main { padding: 32px 24px 48px; }
+}
