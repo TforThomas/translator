@@ -1,4 +1,4 @@
-fastapi==0.115.0
+rfastapi==0.115.0
 uvicorn==0.30.6
 sqlalchemy==2.0.35
 aiosqlite==0.20.0

@@ -8,16 +8,12 @@ from backend.services.pdf_exporter import export_pdf
 
 DEFAULT_EXPORT_EXT = ".epub"
 SUPPORTED_EXPORT_EXTS = {".epub", ".pdf"}
-MIME_BY_EXT = {
-    ".epub": "application/epub+zip",
-    ".pdf": "application/pdf",
-}
+MIME_BY_EXT = {".epub": "application/epub+zip", ".pdf": "application/pdf"}
 
 
 def _detect_ext_from_file(file_path: str) -> str | None:
     if not file_path or not os.path.exists(file_path):
         return None
-
     try:
         with open(file_path, "rb") as f:
             header = f.read(8)
@@ -27,27 +23,24 @@ def _detect_ext_from_file(file_path: str) -> str | None:
             try:
                 with zipfile.ZipFile(file_path, "r") as zf:
                     if "mimetype" in zf.namelist():
-                        mimetype_content = zf.read("mimetype").decode("utf-8", errors="ignore").strip()
-                        if mimetype_content == "application/epub+zip":
+                        mt = zf.read("mimetype").decode("utf-8", errors="ignore").strip()
+                        if mt == "application/epub+zip":
                             return ".epub"
             except Exception:
                 return None
     except Exception:
         return None
-
     return None
 
 
 def get_project_source_ext(project: Project) -> str:
-    detected_ext = _detect_ext_from_file(project.source_file_path or "")
-    if detected_ext in SUPPORTED_EXPORT_EXTS:
-        return detected_ext
-
-    source_candidates = [project.source_file_path or "", project.name or ""]
-    for candidate in source_candidates:
-        ext = Path(candidate).suffix.lower()
-        if ext in SUPPORTED_EXPORT_EXTS:
-            return ext
+    ext = _detect_ext_from_file(project.source_file_path or "")
+    if ext in SUPPORTED_EXPORT_EXTS:
+        return ext
+    for cand in [project.source_file_path or "", project.name or ""]:
+        e = Path(cand).suffix.lower()
+        if e in SUPPORTED_EXPORT_EXTS:
+            return e
     return DEFAULT_EXPORT_EXT
 
 
@@ -67,17 +60,15 @@ async def export_translated_project(
     db: AsyncSession,
     output_dir: str,
     output_suffix: str = "",
+    mode: str = "replace",
 ) -> tuple[str, str]:
     project = await db.get(Project, project_id)
     if not project:
         raise ValueError("Project not found")
-
     ext = get_project_source_ext(project)
     output_path = build_output_path(project_id, output_dir, ext, suffix=output_suffix)
-
     if ext == ".pdf":
-        await export_pdf(project_id, db, output_path)
+        await export_pdf(project_id, db, output_path, mode=mode)
     else:
-        await export_epub(project_id, db, output_path)
-
+        await export_epub(project_id, db, output_path, mode=mode)
     return output_path, ext
