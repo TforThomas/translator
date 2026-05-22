@@ -12,7 +12,7 @@ export async function apiGet<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-export async function apiPostJson<TResponse, TBody extends object>(
+export async function apiPostJson<TResponse, TBody extends object = object>(
   path: string,
   body: TBody
 ): Promise<TResponse> {

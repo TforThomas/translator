@@ -53,32 +53,22 @@ export default function TaskDetail() {
 		return () => clearTimeout(timer);
 	}, [projectId]);
 
-	const parseFilename = (d: string | null): string | null => {
-		if (!d) return null;
-		const u = d.match(/filename\*=UTF-8''([^;]+)/i);
-		if (u?.[1]) { try { return decodeURIComponent(u[1]); } catch { return u[1]; } }
-		return d.match(/filename="?([^";]+)"?/i)?.[1] || null;
+	const normalizeDownloadName = (name: string, ext: ".epub" | ".pdf") => {
+		const base = name.replace(/\.(epub|pdf)$/i, "") || "translated";
+		return `${base}_translated${ext}`;
 	};
 
-	const sourceExt = (task.name.match(/\.[^/.]+$/)?.[0] || ".epub").toLowerCase();
+	const sourceExt = task.source_file_type ? `.${task.source_file_type}` : (task.name.match(/\.[^/.]+$/)?.[0] || ".epub").toLowerCase();
 	const exportLabel = sourceExt === ".pdf" ? "导出 PDF" : "导出 EPUB";
 
 	const doDownload = async () => {
 		setIsDownloading(true);
 		try {
-			const res = await fetch(`${API_BASE_URL}/api/projects/${projectId}/download`);
-			if (!res.ok) throw new Error(`download failed: ${res.status}`);
-			const blob = await res.blob();
-			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");
-			a.href = url;
-			const srv = parseFilename(res.headers.get("content-disposition"));
-			if (srv) a.download = srv;
-			else {
-				const mime = (res.headers.get("content-type") || blob.type || "").toLowerCase();
-				a.download = `${task.name.replace(/\.[^/.]+$/, "")}_translated${mime.includes("pdf") ? ".pdf" : ".epub"}`;
-			}
-			document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+			const ext = sourceExt === ".epub" ? ".epub" : ".pdf";
+			a.href = `${API_BASE_URL}/api/projects/${projectId}/download?t=${Date.now()}`;
+			a.download = normalizeDownloadName(task.name, ext);
+			document.body.appendChild(a); a.click(); a.remove();
 			setErr(null);
 		} catch (e) { setErr(e instanceof Error ? e.message : "下载失败"); }
 		finally { setIsDownloading(false); }

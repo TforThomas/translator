@@ -97,6 +97,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition", "X-Export-Format", "X-Export-Mode"],
 )
 
 
@@ -105,6 +106,7 @@ async def _ensure_schema_columns():
     async with AsyncSessionLocal() as db:
         for sql in [
             "ALTER TABLE projects ADD COLUMN genre TEXT DEFAULT 'general'",
+            "ALTER TABLE projects ADD COLUMN source_file_type TEXT",
             "ALTER TABLE chapters ADD COLUMN translated_title TEXT",
         ]:
             try:
@@ -112,6 +114,20 @@ async def _ensure_schema_columns():
                 await db.commit()
             except Exception:
                 await db.rollback()
+
+        try:
+            await db.execute(text("""
+                UPDATE projects
+                SET source_file_type = CASE
+                    WHEN lower(coalesce(source_file_path, name, '')) LIKE '%.pdf' THEN 'pdf'
+                    WHEN lower(coalesce(source_file_path, name, '')) LIKE '%.epub' THEN 'epub'
+                    ELSE source_file_type
+                END
+                WHERE source_file_type IS NULL OR source_file_type = ''
+            """))
+            await db.commit()
+        except Exception:
+            await db.rollback()
 
 
 @app.on_event("startup")
@@ -199,6 +215,7 @@ async def upload_project_file(project_id: str, background_tasks: BackgroundTasks
     logger.info(f"File uploaded for project {project_id}: {safe_filename}")
 
     project.source_file_path = file_path
+    project.source_file_type = file_ext.lstrip(".")
     project.status = "parsing"
     await db.commit()
 
@@ -334,6 +351,7 @@ async def get_project_status(project_id: str, db: AsyncSession = Depends(get_db)
     return {
         "id": project.id,
         "name": project.name,
+        "source_file_type": get_project_source_ext(project).lstrip("."),
         "genre": getattr(project, "genre", "general"),
         "progress": project.progress,
         "status": project.status,

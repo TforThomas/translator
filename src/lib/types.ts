@@ -36,6 +36,7 @@ export interface ChapterStatus {
 export interface ProjectDetail {
   id: string;
   name: string;
+  source_file_type?: "epub" | "pdf";
   progress: number;
   status: ProjectStatus;
   chapters: ChapterStatus[];

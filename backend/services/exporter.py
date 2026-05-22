@@ -52,6 +52,13 @@ def get_project_source_ext(project: Project) -> str:
     """
     src_path = getattr(project, "source_file_path", "") or ""
     name = getattr(project, "name", "") or ""
+    source_type = (getattr(project, "source_file_type", "") or "").lower().strip().lstrip(".")
+
+    if source_type:
+        e = f".{source_type}"
+        if e in SUPPORTED_EXPORT_EXTS:
+            logger.debug("export ext resolved by source_file_type: %r -> %s", source_type, e)
+            return e
 
     # 1) 文件名后缀
     for cand in (src_path, name):

@@ -15,6 +15,7 @@ class Project(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String, nullable=False)
     source_file_path = Column(String)
+    source_file_type = Column(String)
     # created, parsing, pending_terms, translating, paused, completed, failed
     status = Column(String, default="created")
     enable_ocr = Column(Boolean, default=False)

@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import tempfile
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -115,6 +116,34 @@ def _insert_with_autosize(page, rect, text, fontname, fontsize, color, align):
     except Exception:
         pass
     return False
+
+
+def _save_compatible_pdf(doc, output_path: str):
+    """Save with conservative PDF options, then reopen once to verify the file."""
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    out_dir = os.path.dirname(output_path)
+    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_export_", suffix=".pdf", dir=out_dir)
+    os.close(fd)
+    try:
+        doc.save(
+            tmp_path,
+            garbage=3,
+            clean=False,
+            deflate=False,
+            use_objstms=0,
+            encryption=0,
+        )
+        import fitz
+        with fitz.open(tmp_path) as check_doc:
+            if check_doc.page_count <= 0:
+                raise RuntimeError("Exported PDF has no pages")
+        os.replace(tmp_path, output_path)
+    except Exception:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 async def _translate_toc(doc, project_id: str, db: AsyncSession):
@@ -234,8 +263,7 @@ async def export_pdf(project_id: str, db: AsyncSession, output_path: str, mode: 
                         _insert_with_autosize(page, rect, text, fontname, fontsize, color, align)
 
             await _translate_toc(doc, project_id, db)
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            doc.save(output_path, garbage=4, deflate=True, clean=True)
+            _save_compatible_pdf(doc, output_path)
             doc.close()
             logger.info(f"Exported PDF (mode={mode}) to {output_path} with layout preservation")
             return output_path
@@ -280,8 +308,7 @@ async def export_pdf(project_id: str, db: AsyncSession, output_path: str, mode: 
                 y += 4
         y += 10
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    doc.save(output_path, garbage=4, deflate=True, clean=True)
+    _save_compatible_pdf(doc, output_path)
     doc.close()
     logger.info(f"Exported PDF (mode={mode}) to {output_path} with fallback flow")
     return output_path
