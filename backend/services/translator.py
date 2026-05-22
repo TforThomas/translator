@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 # ==== Module-level config ====
 TRANSLATION_TEMPERATURE = float(os.getenv("TRANSLATION_TEMPERATURE", "0.25"))
 TRANSLATION_MAX_TOKENS = int(os.getenv("TRANSLATION_MAX_TOKENS", "4096"))
-TRANSLATION_BATCH_SIZE = max(0, int(os.getenv("TRANSLATION_BATCH_SIZE", "4")))
-TRANSLATION_BATCH_MAX_CHARS = int(os.getenv("TRANSLATION_BATCH_MAX_CHARS", "2400"))
+TRANSLATION_BATCH_SIZE = max(0, int(os.getenv("TRANSLATION_BATCH_SIZE", "8")))
+TRANSLATION_BATCH_MAX_CHARS = int(os.getenv("TRANSLATION_BATCH_MAX_CHARS", "4800"))
 
 SOURCE_ALPHA_PATTERN = re.compile(r"[A-Za-z]")
 EN_WORD_PATTERN = re.compile(r"\b[A-Za-z][A-Za-z\-']{2,}\b")
@@ -211,6 +211,28 @@ def cleanup_translated_text(text: Optional[str]) -> Optional[str]:
     cleaned = cleaned.replace("\r\n", "\n")
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     return cleaned.strip()
+
+
+def cleanup_json_text(text: Optional[str]) -> Optional[str]:
+    if text is None:
+        return None
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`").strip()
+        if cleaned.lower().startswith("json"):
+            cleaned = cleaned[4:].strip()
+    return cleaned
+
+
+def genre_style_rules(genre_role: str) -> str:
+    if "novel" not in (genre_role or "").lower():
+        return ""
+    return (
+        "\nNovel style guidance:\n"
+        "- Keep narration smooth and immersive; preserve character voice and emotional subtext.\n"
+        "- Translate dialogue into natural spoken Chinese while preserving speaker intent.\n"
+        "- Keep names, places, invented terms, and recurring phrasing consistent across chapters.\n"
+    )
 
 
 def _contains_excessive_untranslated_english(original_text: str, translated_text: str) -> bool:
@@ -442,6 +464,7 @@ async def translate_text_with_stage(
         "4) Do not add explanations, notes, or markdown fences.\n"
         "5) Strictly follow the glossary above for any term it covers."
     )
+    style_rules = genre_style_rules(genre_role)
 
     if stage == "repair":
         issue_hint = ""
@@ -454,6 +477,7 @@ async def translate_text_with_stage(
             f"{issue_hint}\n"
             f"{term_prompt}"
             f"{general_rules}\n"
+            f"{style_rules}"
             f"Context of surrounding text:\n{context}\n\n"
             "Return ONLY the repaired Chinese text, no preamble, no markdown."
         )
@@ -465,6 +489,7 @@ async def translate_text_with_stage(
             "Polish the draft into FINAL Chinese: faithful AND fluent. Do not omit any sentence.\n"
             f"{term_prompt}"
             f"{general_rules}\n"
+            f"{style_rules}"
             f"Context of surrounding text:\n{context}\n\n"
             "Return ONLY the polished Chinese text, no preamble, no markdown."
         )
@@ -483,6 +508,7 @@ async def translate_text_with_stage(
             "(B) Native fluency: natural Chinese word order, punctuation, measure words; avoid literal translation.\n"
             f"{term_prompt}"
             f"{general_rules}\n"
+            f"{style_rules}"
             f"Context of surrounding text:\n{context}"
             f"{examples}\n\n"
             "Return ONLY the final Chinese translation, no preamble, no markdown."
@@ -520,8 +546,6 @@ async def translate_batch_one_pass(
     if not segments:
         return {}
     config = translator_config or await get_translator_config(db)
-    if config.provider == APIProvider.GOOGLE:
-        return {seg["id"]: None for seg in segments}
 
     full_terms = term_dict if term_dict is not None else await get_confirmed_term_dict(project_id, db)
     merged_text = "\n".join(seg["text"] for seg in segments)
@@ -542,6 +566,7 @@ async def translate_batch_one_pass(
         "You will receive a JSON array of segments. For EACH input object with id and text, "
         "produce a FINAL, publishable Chinese translation that is faithful AND fluent.\n"
         f"{term_prompt}"
+        f"{genre_style_rules(genre_role)}"
         "Rules:\n"
         "1) Output MUST be a JSON object {\"results\": [...]} with the SAME length and SAME ids.\n"
         "2) Each item: {\"id\": <same id>, \"translation\": \"<Chinese>\"}.\n"
@@ -550,37 +575,51 @@ async def translate_batch_one_pass(
         f"{contexts}"
     )
 
-    client = get_openai_client(config)
     raw = None
     dynamic_max = max(1024, min(TRANSLATION_MAX_TOKENS, int(len(merged_text) * 1.8) + 400))
-    for attempt in range(max_retries):
-        try:
-            response = await client.chat.completions.create(
-                model=config.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": _json.dumps(payload, ensure_ascii=False)},
-                ],
-                temperature=TRANSLATION_TEMPERATURE,
-                max_tokens=dynamic_max,
-                response_format={"type": "json_object"},
-                **config.extra_params,
-            )
-            raw = response.choices[0].message.content if response.choices else None
-            if raw:
-                break
-        except APIStatusError as e:
-            if 400 <= e.status_code < 500 and e.status_code != 429:
-                return {seg["id"]: None for seg in segments}
-            await asyncio.sleep(2 ** attempt)
-        except Exception:
-            await asyncio.sleep(2 ** attempt)
+    user_payload = _json.dumps(payload, ensure_ascii=False)
+    if config.provider == APIProvider.GOOGLE:
+        raw = await translate_with_google_api(
+            config, system_prompt, user_payload,
+            max_retries=max_retries,
+            max_tokens=dynamic_max,
+        )
+    else:
+        client = get_openai_client(config)
+        use_response_format = True
+        for attempt in range(max_retries):
+            try:
+                kwargs = dict(
+                    model=config.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_payload},
+                    ],
+                    temperature=TRANSLATION_TEMPERATURE,
+                    max_tokens=dynamic_max,
+                    **config.extra_params,
+                )
+                if use_response_format:
+                    kwargs["response_format"] = {"type": "json_object"}
+                response = await client.chat.completions.create(**kwargs)
+                raw = response.choices[0].message.content if response.choices else None
+                if raw:
+                    break
+            except APIStatusError as e:
+                if 400 <= e.status_code < 500 and e.status_code != 429 and use_response_format:
+                    use_response_format = False
+                    continue
+                if 400 <= e.status_code < 500 and e.status_code != 429:
+                    return {seg["id"]: None for seg in segments}
+                await asyncio.sleep(2 ** attempt)
+            except Exception:
+                await asyncio.sleep(2 ** attempt)
 
     if not raw:
         return {seg["id"]: None for seg in segments}
 
     try:
-        parsed = _json.loads(raw)
+        parsed = _json.loads(cleanup_json_text(raw) or "")
         if isinstance(parsed, dict):
             for k in ("results", "translations", "data"):
                 if isinstance(parsed.get(k), list):

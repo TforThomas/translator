@@ -160,7 +160,7 @@ class ProjectCreate(BaseModel):
     source_lang: str = "en"
     target_lang: str = "zh"
     enable_ocr: bool = False
-    genre: str = "general"
+    genre: str = "novel"
 
 
 @app.get("/api/projects")
@@ -216,6 +216,8 @@ async def upload_project_file(project_id: str, background_tasks: BackgroundTasks
 
     project.source_file_path = file_path
     project.source_file_type = file_ext.lstrip(".")
+    if file_ext == ".epub" and (project.genre or "general") == "general":
+        project.genre = "novel"
     project.status = "parsing"
     await db.commit()
 

@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import tempfile
+import textwrap
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -20,10 +21,11 @@ PDF_TITLE_FONT_SIZE = 15
 PDF_LINE_HEIGHT = 18
 PDF_MAX_CHARS_PER_LINE = 44
 PDF_FIRST_LINE_INDENT = os.getenv("PDF_FIRST_LINE_INDENT", "true").lower() in {"1", "true", "yes", "on"}
-CN_FONT_NAME = os.getenv("CN_FONT_NAME", "china-s")
-CN_FONT_BOLD = os.getenv("CN_FONT_BOLD", CN_FONT_NAME)
-CN_FONT_FILE = os.getenv("CN_FONT_FILE", "")
-CN_FONT_BOLD_FILE = os.getenv("CN_FONT_BOLD_FILE", "")
+DEFAULT_FONT_DIR = Path(__file__).resolve().parent.parent / "data" / "fonts"
+CN_FONT_FILE = os.getenv("CN_FONT_FILE", str(DEFAULT_FONT_DIR / "SourceHanSerifSC-Regular.otf"))
+CN_FONT_BOLD_FILE = os.getenv("CN_FONT_BOLD_FILE", str(DEFAULT_FONT_DIR / "SourceHanSerifSC-Bold.otf"))
+CN_FONT_NAME = os.getenv("CN_FONT_NAME", "SourceHanSerifSC" if os.path.exists(CN_FONT_FILE) else "china-s")
+CN_FONT_BOLD = os.getenv("CN_FONT_BOLD", "SourceHanSerifSC-Bold" if os.path.exists(CN_FONT_BOLD_FILE) else CN_FONT_NAME)
 
 
 def _normalize_spaces(text: str) -> str:
@@ -94,14 +96,38 @@ def _resolve_fontname(meta: dict) -> str:
     return CN_FONT_NAME or "china-s"
 
 
-def _insert_with_autosize(page, rect, text, fontname, fontsize, color, align):
+def _resolve_fontfile(meta: dict) -> str | None:
+    fontfile = CN_FONT_BOLD_FILE if meta.get("bold") else CN_FONT_FILE
+    return fontfile if fontfile and os.path.exists(fontfile) else None
+
+
+def _wrap_text_for_rect(text: str, rect, fontsize: float) -> str:
+    """Give PyMuPDF sane CJK break points before insert_textbox lays text out."""
+    cleaned = re.sub(r"[ \t]+", " ", text or "").strip()
+    if not cleaned:
+        return ""
+    max_chars = max(4, int(max(rect.width, fontsize * 4) / max(fontsize * 0.58, 1)))
+    wrapped_lines: list[str] = []
+    for paragraph in re.split(r"\n+", cleaned):
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+        if re.search(r"[\u4e00-\u9fff]", paragraph):
+            wrapped_lines.extend(paragraph[i:i + max_chars] for i in range(0, len(paragraph), max_chars))
+        else:
+            wrapped_lines.extend(textwrap.wrap(paragraph, width=max_chars, break_long_words=False) or [paragraph])
+    return "\n".join(wrapped_lines)
+
+
+def _insert_with_autosize(page, rect, text, fontname, fontfile, fontsize, color, align):
     """逐次缩字号尝试填进 rect；仍溢出就向下扩一行。"""
     fs = float(fontsize)
     min_fs = max(7.0, fs * 0.6)
     while fs >= min_fs:
+        fitted_text = _wrap_text_for_rect(text, rect, fs)
         rc = page.insert_textbox(
-            rect, text,
-            fontsize=fs, fontname=fontname, color=color, align=align,
+            rect, fitted_text,
+            fontsize=fs, fontname=fontname, fontfile=fontfile, color=color, align=align,
         )
         if rc >= 0:
             return True
@@ -109,9 +135,10 @@ def _insert_with_autosize(page, rect, text, fontname, fontsize, color, align):
     try:
         import fitz
         expanded = fitz.Rect(rect.x0, rect.y0, rect.x1, rect.y1 + (rect.height or fontsize))
+        fitted_text = _wrap_text_for_rect(text, expanded, max(min_fs, 7.0))
         page.insert_textbox(
-            expanded, text,
-            fontsize=max(min_fs, 7.0), fontname=fontname, color=color, align=align,
+            expanded, fitted_text,
+            fontsize=max(min_fs, 7.0), fontname=fontname, fontfile=fontfile, color=color, align=align,
         )
     except Exception:
         pass
@@ -206,6 +233,9 @@ async def export_pdf(project_id: str, db: AsyncSession, output_path: str, mode: 
                 meta = json.loads(meta_raw)
             except Exception:
                 continue
+            if meta.get("skip_translate") or meta.get("intersect_image"):
+                # Formula / image-adjacent blocks are intentionally left as original PDF objects.
+                continue
             page_index = int(meta.get("page", -1))
             bbox = meta.get("bbox", [])
             if page_index < 0 or not isinstance(bbox, list) or len(bbox) != 4:
@@ -215,58 +245,58 @@ async def export_pdf(project_id: str, db: AsyncSession, output_path: str, mode: 
                 continue
             translated = (seg.translated_text or "").strip()
             original = (seg.original_text or "").strip()
-            if not translated and not original:
-                continue
-            if meta.get("skip_translate") and not translated:
-                # 公式 / 插图区块：原样保留
+            if not translated:
                 continue
             page_updates.setdefault(page_index, []).append((rect, translated, original, meta))
 
-        if page_updates:
-            doc = fitz.open(source_pdf_path)
-            _ensure_cn_fonts(doc)
+        doc = fitz.open(source_pdf_path)
+        _ensure_cn_fonts(doc)
 
-            for page_index, replacements in page_updates.items():
-                if page_index < 0 or page_index >= len(doc):
-                    continue
-                page = doc[page_index]
+        try:
+            if page_updates:
+                for page_index, replacements in page_updates.items():
+                    if page_index < 0 or page_index >= len(doc):
+                        continue
+                    page = doc[page_index]
 
-                for rect, translated, original, meta in replacements:
-                    if mode == "bilingual":
-                        continue
-                    if meta.get("intersect_image"):
-                        continue
-                    page.add_redact_annot(rect, fill=(1, 1, 1))
-                page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
+                    for rect, translated, original, meta in replacements:
+                        if mode == "bilingual":
+                            continue
+                        if meta.get("intersect_image"):
+                            continue
+                        page.add_redact_annot(rect, fill=(1, 1, 1))
+                    page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
 
-                for rect, translated, original, meta in replacements:
-                    text = translated or original
-                    if not text:
-                        continue
-                    fontname = _resolve_fontname(meta)
-                    fontsize = float(meta.get("font_size", PDF_BODY_FONT_SIZE))
-                    color = _color_int_to_rgb(meta.get("color", 0))
-                    align = _infer_alignment(
-                        meta.get("line_xs0") or [], meta.get("line_xs1") or [],
-                        rect.x0, rect.x1,
-                    )
-                    if mode == "bilingual" and translated:
-                        try:
-                            below = fitz.Rect(
-                                rect.x0, rect.y1 + 2,
-                                rect.x1, rect.y1 + 2 + max(rect.height, fontsize * 1.6),
-                            )
-                            _insert_with_autosize(page, below, translated, fontname, fontsize, color, align)
-                        except Exception:
-                            pass
-                    else:
-                        _insert_with_autosize(page, rect, text, fontname, fontsize, color, align)
+                    for rect, translated, original, meta in replacements:
+                        text = translated or original
+                        if not text:
+                            continue
+                        fontname = _resolve_fontname(meta)
+                        fontfile = _resolve_fontfile(meta)
+                        fontsize = float(meta.get("font_size", PDF_BODY_FONT_SIZE))
+                        color = _color_int_to_rgb(meta.get("color", 0))
+                        align = _infer_alignment(
+                            meta.get("line_xs0") or [], meta.get("line_xs1") or [],
+                            rect.x0, rect.x1,
+                        )
+                        if mode == "bilingual" and translated:
+                            try:
+                                below = fitz.Rect(
+                                    rect.x0, rect.y1 + 2,
+                                    rect.x1, rect.y1 + 2 + max(rect.height, fontsize * 1.6),
+                                )
+                                _insert_with_autosize(page, below, translated, fontname, fontfile, fontsize, color, align)
+                            except Exception:
+                                pass
+                        else:
+                            _insert_with_autosize(page, rect, text, fontname, fontfile, fontsize, color, align)
 
             await _translate_toc(doc, project_id, db)
             _save_compatible_pdf(doc, output_path)
+        finally:
             doc.close()
-            logger.info(f"Exported PDF (mode={mode}) to {output_path} with layout preservation")
-            return output_path
+        logger.info(f"Exported PDF (mode={mode}) to {output_path} with layout preservation")
+        return output_path
 
     # Fallback: build a simple flow PDF
     chapters = (await db.execute(
@@ -283,7 +313,10 @@ async def export_pdf(project_id: str, db: AsyncSession, output_path: str, mode: 
         if y + PDF_LINE_HEIGHT > PDF_PAGE_HEIGHT - PDF_MARGIN_BOTTOM:
             page = doc.new_page(width=PDF_PAGE_WIDTH, height=PDF_PAGE_HEIGHT)
             y = PDF_MARGIN_TOP
-        page.insert_text((PDF_MARGIN_X, y), text, fontsize=fontsize, fontname=fontname)
+        fontfile = CN_FONT_BOLD_FILE if fontname == CN_FONT_BOLD else CN_FONT_FILE
+        if not fontfile or not os.path.exists(fontfile):
+            fontfile = None
+        page.insert_text((PDF_MARGIN_X, y), text, fontsize=fontsize, fontname=fontname, fontfile=fontfile)
         y += PDF_LINE_HEIGHT + extra_spacing
 
     for chapter in chapters:

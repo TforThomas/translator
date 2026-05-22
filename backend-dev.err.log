@@ -12,3 +12,76 @@ INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
 2026-05-22 14:58:38,455 - backend.services.pdf_exporter - INFO - Exported PDF (mode=replace) to C:\Users\lanzhixiao\Downloads\开发长文本文件翻译器\backend\data\exports\208e1753-1599-4964-9fe4-93700749ce4b_translated_dl_4e9546c3.pdf with layout preservation
 2026-05-22 14:58:38,933 - backend.services.exporter - INFO - Exporting project 208e1753-1599-4964-9fe4-93700749ce4b as .pdf (mode=replace, source='C:\\Users\\lanzhixiao\\Downloads\\开发长文本文件翻译器\\backend\\data\\uploads\\208e1753-1599-4964-9fe4-93700749ce4b_fermilab-conf-07-601-e.pdf') -> C:\Users\lanzhixiao\Downloads\开发长文本文件翻译器\backend\data\exports\208e1753-1599-4964-9fe4-93700749ce4b_translated_dl_7c3d34d9.pdf
 2026-05-22 14:58:41,903 - backend.services.pdf_exporter - INFO - Exported PDF (mode=replace) to C:\Users\lanzhixiao\Downloads\开发长文本文件翻译器\backend\data\exports\208e1753-1599-4964-9fe4-93700749ce4b_translated_dl_7c3d34d9.pdf with layout preservation
+2026-05-22 21:07:19,461 - backend.main - INFO - File uploaded for project 030699a3-d64d-4e96-a190-e9ca51035a1e: fermilab-conf-07-601-e.pdf
+2026-05-22 21:07:21,422 - backend.services.parser - INFO - Starting term extraction for project 030699a3-d64d-4e96-a190-e9ca51035a1e, sample text length: 4518
+2026-05-22 21:07:43,141 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:07:43,215 - backend.services.parser - INFO - Successfully extracted 5 terms for project 030699a3-d64d-4e96-a190-e9ca51035a1e
+2026-05-22 21:07:43,279 - backend.services.parser - INFO - Successfully parsed PDF project 030699a3-d64d-4e96-a190-e9ca51035a1e: 1 chapters from 6 pages
+2026-05-22 21:07:43,283 - backend.main - INFO - Successfully parsed project 030699a3-d64d-4e96-a190-e9ca51035a1e
+2026-05-22 21:07:48,571 - backend.main - INFO - Confirming all terms for project 030699a3-d64d-4e96-a190-e9ca51035a1e
+2026-05-22 21:07:48,624 - backend.main - INFO - Found 5 terms to confirm
+2026-05-22 21:07:48,663 - backend.main - INFO - Project 030699a3-d64d-4e96-a190-e9ca51035a1e status changed to translating
+2026-05-22 21:07:48,665 - backend.main - INFO - Translation task scheduled for project 030699a3-d64d-4e96-a190-e9ca51035a1e
+2026-05-22 21:07:48,672 - backend.services.task_runner - INFO - Attempting to start translation task for project 030699a3-d64d-4e96-a190-e9ca51035a1e
+2026-05-22 21:07:48,773 - backend.services.task_runner - INFO - Starting translation for project 030699a3-d64d-4e96-a190-e9ca51035a1e (genre_role=professional translator)
+2026-05-22 21:07:48,788 - backend.services.task_runner - INFO - Found 1 chapters to translate
+2026-05-22 21:07:56,058 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:07:57,624 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:08:16,950 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:08:22,729 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:08:29,537 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:08:34,672 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:08:38,887 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:08:46,571 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:08:53,609 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:08:58,262 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:09:01,598 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:09:23,112 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:09:33,106 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:09:40,486 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:09:44,878 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:09:54,889 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:10:02,842 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:10:11,560 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:10:17,274 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:10:34,123 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:10:44,551 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:10:50,848 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:10:55,902 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:11:00,251 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:11:19,283 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:11:25,614 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:11:30,166 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:11:47,795 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:11:54,511 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:00,336 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:06,979 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:12,092 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:17,184 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:21,610 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:30,131 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:33,091 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:33,095 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:34,206 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:34,412 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:35,701 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:36,825 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:37,287 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:37,552 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:37,562 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:43,434 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:43,947 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:46,777 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:49,722 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:51,042 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:52,606 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:12:53,731 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:13:03,534 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:13:08,286 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:13:11,716 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-22 21:13:11,950 - backend.services.task_runner - INFO - Project 030699a3-d64d-4e96-a190-e9ca51035a1e translation completed
+2026-05-22 21:13:11,953 - backend.services.exporter - INFO - Exporting project 030699a3-d64d-4e96-a190-e9ca51035a1e as .pdf (mode=replace, source='C:\\Users\\lanzhixiao\\Downloads\\开发长文本文件翻译器\\backend\\data\\uploads\\030699a3-d64d-4e96-a190-e9ca51035a1e_fermilab-conf-07-601-e.pdf') -> C:\Users\lanzhixiao\Downloads\开发长文本文件翻译器\backend\data\exports\030699a3-d64d-4e96-a190-e9ca51035a1e_translated.pdf
+2026-05-22 21:13:13,112 - backend.services.pdf_exporter - INFO - Exported PDF (mode=replace) to C:\Users\lanzhixiao\Downloads\开发长文本文件翻译器\backend\data\exports\030699a3-d64d-4e96-a190-e9ca51035a1e_translated.pdf with layout preservation
+2026-05-22 21:13:13,113 - backend.services.task_runner - INFO - .PDF exported to C:\Users\lanzhixiao\Downloads\开发长文本文件翻译器\backend\data\exports\030699a3-d64d-4e96-a190-e9ca51035a1e_translated.pdf
+2026-05-22 21:15:08,978 - backend.services.exporter - INFO - Exporting project 030699a3-d64d-4e96-a190-e9ca51035a1e as .pdf (mode=replace, source='C:\\Users\\lanzhixiao\\Downloads\\开发长文本文件翻译器\\backend\\data\\uploads\\030699a3-d64d-4e96-a190-e9ca51035a1e_fermilab-conf-07-601-e.pdf') -> C:\Users\lanzhixiao\Downloads\开发长文本文件翻译器\backend\data\exports\030699a3-d64d-4e96-a190-e9ca51035a1e_translated_dl_75f3d2a1.pdf
+2026-05-22 21:15:10,084 - backend.services.pdf_exporter - INFO - Exported PDF (mode=replace) to C:\Users\lanzhixiao\Downloads\开发长文本文件翻译器\backend\data\exports\030699a3-d64d-4e96-a190-e9ca51035a1e_translated_dl_75f3d2a1.pdf with layout preservation

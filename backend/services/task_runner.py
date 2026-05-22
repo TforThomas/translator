@@ -27,8 +27,9 @@ TRANSLATION_CONCURRENCY = max(1, int(os.getenv("TRANSLATION_CONCURRENCY", "8")))
 PROGRESS_UPDATE_INTERVAL = max(1, int(os.getenv("PROGRESS_UPDATE_INTERVAL", "5")))
 AUTO_RETRY_QA_FAILED = os.getenv("AUTO_RETRY_QA_FAILED", "true").lower() in {"1", "true", "yes", "on"}
 AUTO_RETRY_MAX_PER_SEG = max(0, int(os.getenv("AUTO_RETRY_MAX_PER_SEG", "1")))
-TRANSLATION_BATCH_SIZE = max(0, int(os.getenv("TRANSLATION_BATCH_SIZE", "4")))
-TRANSLATION_BATCH_MAX_CHARS = int(os.getenv("TRANSLATION_BATCH_MAX_CHARS", "2400"))
+TRANSLATION_BATCH_SIZE = max(0, int(os.getenv("TRANSLATION_BATCH_SIZE", "8")))
+TRANSLATION_BATCH_MAX_CHARS = int(os.getenv("TRANSLATION_BATCH_MAX_CHARS", "4800"))
+TRANSLATION_BATCH_CONCURRENCY = max(1, int(os.getenv("TRANSLATION_BATCH_CONCURRENCY", str(TRANSLATION_CONCURRENCY))))
 GLOSSARY_EXPAND_EVERY = max(0, int(os.getenv("GLOSSARY_EXPAND_EVERY", "3")))
 
 CTX_PREV_SEGS = max(0, int(os.getenv("CTX_PREV_SEGS", "3")))
@@ -273,34 +274,15 @@ async def _try_batch_translate(
     handled: set[str] = set()
 
     batch: list[tuple[int, Segment, str]] = []
+    batches: list[list[tuple[int, Segment, str]]] = []
     char_sum = 0
     seg_index_map = {s.id: i for i, s in enumerate(chapter_segments)}
 
-    async def flush():
+    def flush():
         nonlocal batch, char_sum
         if not batch:
             return
-        items = [
-            {"id": idx, "text": s.original_text, "context": ctx}
-            for idx, (_, s, ctx) in enumerate(batch)
-        ]
-        async with AsyncSessionLocal() as bdb:
-            results = await translate_batch_one_pass(
-                items, project_id, bdb,
-                translator_config=translator_config,
-                term_dict=term_dict,
-                genre_role=genre_role,
-            )
-            for idx, (_, s, _ctx) in enumerate(batch):
-                t = results.get(idx)
-                seg_obj = await bdb.get(Segment, s.id)
-                if not seg_obj:
-                    continue
-                if t and not qa_diagnose(seg_obj.original_text, t, qa_term_dict):
-                    seg_obj.translated_text = t
-                    seg_obj.status = "completed"
-                    handled.add(seg_obj.id)
-            await bdb.commit()
+        batches.append(batch)
         batch = []
         char_sum = 0
 
@@ -313,16 +295,54 @@ async def _try_batch_translate(
             continue
         text_len = len(s.original_text or "")
         if text_len > TRANSLATION_BATCH_MAX_CHARS // 2:
-            await flush()
+            flush()
             continue
         idx_in_chapter = seg_index_map.get(s.id, 0)
         ctx = build_context_window(chapter_segments, idx_in_chapter, chapter_title, chapter_summary)
         if char_sum + text_len > TRANSLATION_BATCH_MAX_CHARS or len(batch) >= TRANSLATION_BATCH_SIZE:
-            await flush()
+            flush()
         batch.append((idx_in_chapter, s, ctx))
         char_sum += text_len
 
-    await flush()
+    flush()
+    if not batches:
+        return handled
+
+    batch_semaphore = asyncio.Semaphore(min(TRANSLATION_BATCH_CONCURRENCY, TRANSLATION_CONCURRENCY))
+
+    async def run_batch(batch_items: list[tuple[int, Segment, str]]) -> set[str]:
+        local_handled: set[str] = set()
+        async with batch_semaphore:
+            if await is_project_paused(project_id):
+                return local_handled
+            items = [
+                {"id": idx, "text": s.original_text, "context": ctx}
+                for idx, (_, s, ctx) in enumerate(batch_items)
+            ]
+            async with AsyncSessionLocal() as bdb:
+                results = await translate_batch_one_pass(
+                    items, project_id, bdb,
+                    translator_config=translator_config,
+                    term_dict=term_dict,
+                    genre_role=genre_role,
+                )
+                for idx, (_, s, _ctx) in enumerate(batch_items):
+                    t = results.get(idx)
+                    seg_obj = await bdb.get(Segment, s.id)
+                    if not seg_obj or is_segment_terminal(seg_obj):
+                        continue
+                    if t and not qa_diagnose(seg_obj.original_text, t, qa_term_dict):
+                        seg_obj.translated_text = t
+                        seg_obj.status = "completed"
+                        local_handled.add(seg_obj.id)
+                await bdb.commit()
+        return local_handled
+
+    for result in await asyncio.gather(*(run_batch(b) for b in batches), return_exceptions=True):
+        if isinstance(result, set):
+            handled.update(result)
+        elif isinstance(result, Exception):
+            logger.warning(f"Batch translation failed and will fall back to single segments: {result}")
     return handled
 
 

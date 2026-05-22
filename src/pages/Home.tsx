@@ -13,6 +13,13 @@ const LANGS = [
 	{ code: "es", label: "Español" },
 ];
 
+const GENRES = [
+	{ code: "novel", label: "小说" },
+	{ code: "general", label: "通用" },
+	{ code: "technical", label: "技术" },
+	{ code: "academic", label: "学术" },
+];
+
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
 	created:       { text: "筹备中", cls: "lp-chip-ink" },
 	uploading:     { text: "上传中", cls: "lp-chip-amber" },
@@ -32,6 +39,7 @@ export default function Home() {
 	const [projects, setProjects] = useState<ProjectSummary[]>([]);
 	const [source, setSource] = useState("en");
 	const [target, setTarget] = useState("zh");
+	const [genre, setGenre] = useState("novel");
 	const [enableOcr, setEnableOcr] = useState(false);
 	const [uploading, setUploading] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
@@ -58,6 +66,7 @@ export default function Home() {
 				source_lang: source,
 				target_lang: target,
 				enable_ocr: enableOcr,
+				genre,
 			});
 			await apiPostFile(`/api/projects/${created.id}/upload`, file);
 			navigate(`/task/${created.id}`);
@@ -98,6 +107,13 @@ export default function Home() {
 					<span className="lp-muted lp-fs-13 lp-mr-4">译文</span>
 					{LANGS.map((l) => (
 						<button key={"t-" + l.code} type="button" className={"lp-pill " + (target === l.code ? "is-active" : "")} onClick={() => setTarget(l.code)}>{l.label}</button>
+					))}
+				</div>
+
+				<div className="lp-row lp-wrap lp-gap-10">
+					<span className="lp-muted lp-fs-13 lp-mr-4">体裁</span>
+					{GENRES.map((g) => (
+						<button key={g.code} type="button" className={"lp-pill " + (genre === g.code ? "is-active" : "")} onClick={() => setGenre(g.code)}>{g.label}</button>
 					))}
 				</div>
 

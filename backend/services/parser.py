@@ -9,12 +9,16 @@ from typing import Optional
 import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
-from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from backend.models.models import Project, Chapter, Segment, Terminology
-from backend.services.translator import get_translator_config
+from backend.services.translator import (
+    APIProvider,
+    get_translator_config,
+    translate_with_google_api,
+    translate_with_openai_format,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +29,10 @@ PDF_SKIP_HEADER_FOOTER = os.getenv("PDF_SKIP_HEADER_FOOTER", "true").lower() in 
 PDF_HEADER_FOOTER_MARGIN = float(os.getenv("PDF_HEADER_FOOTER_MARGIN", "40"))
 PDF_MIN_FONT_SIZE = float(os.getenv("PDF_MIN_FONT_SIZE", "7.0"))
 MATH_FONT_HINTS = ("CMSY", "CMMI", "CMEX", "MSAM", "MSBM", "EUFM", "STIX", "MTSY", "MTMI", "Math")
+EPUB_SEGMENT_MAX_CHARS = int(os.getenv("EPUB_SEGMENT_MAX_CHARS", "1800"))
+EPUB_SKIP_NAV_DOCS = os.getenv("EPUB_SKIP_NAV_DOCS", "true").lower() in {"1", "true", "yes", "on"}
+EPUB_TEXT_TAGS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "div"]
+EPUB_CONTAINER_TAGS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "div", "section", "article"]
 
 
 def _split_long_text(text: str, max_chars: int) -> list[str]:
@@ -54,6 +62,30 @@ def _split_long_text(text: str, max_chars: int) -> list[str]:
     if current:
         chunks.append(current)
     return chunks
+
+
+def _iter_epub_document_items(book):
+    """Yield EPUB document items in spine order, then any remaining document items."""
+    seen = set()
+    for entry in getattr(book, "spine", []) or []:
+        item_id = entry[0] if isinstance(entry, (list, tuple)) else entry
+        item = book.get_item_with_id(item_id)
+        if item and item.get_type() == ebooklib.ITEM_DOCUMENT:
+            seen.add(item.get_name())
+            yield item
+    for item in book.get_items():
+        if item.get_type() == ebooklib.ITEM_DOCUMENT and item.get_name() not in seen:
+            yield item
+
+
+def _is_epub_nav_document(item, soup: BeautifulSoup) -> bool:
+    name = (item.get_name() or "").lower()
+    item_id = (item.get_id() or "").lower()
+    if any(token in name or token in item_id for token in ("nav", "toc", "cover", "titlepage")):
+        return True
+    body_text = soup.get_text(" ", strip=True)
+    link_count = len(soup.find_all("a"))
+    return bool(link_count >= 8 and len(body_text) < 3000)
 
 
 def _pdf_text_to_segments(text: str, min_chars: int, max_chars: int) -> list[str]:
@@ -97,32 +129,52 @@ async def extract_terms_with_llm(project_id: str, sample_text: str, db: AsyncSes
     logger.info(f"Starting term extraction for project {project_id}, sample text length: {len(sample_text)}")
     try:
         config = await get_translator_config(db)
-        client = AsyncOpenAI(
-            api_key=config.api_key,
-            base_url=config.base_url,
-            timeout=config.timeout,
-        )
         prompt = f"""
-Extract up to 5 key proper nouns (characters, places, organizations, or sci-fi/technical concepts) from the text.
-Return ONLY a JSON array of objects with keys: "original" (English), "translated" (suggested Chinese),
+Extract up to 20 key proper nouns (characters, places, organizations, factions, locations, magic/sci-fi concepts, or recurring terms) from the text.
+Return ONLY JSON: {{"terms":[...]}}.
+Each item must have keys: "original" (English), "translated" (suggested Chinese),
 "type" (one of: 角色, 地点, 组织/文明, 科技, 其他).
 No markdown.
 
 Text:
-{sample_text[:3000]}
+{sample_text[:6000]}
 """
-        response = await client.chat.completions.create(
-            model=config.model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=500,
-        )
-        content = response.choices[0].message.content.strip()
+        if config.provider == APIProvider.GOOGLE:
+            content = await translate_with_google_api(
+                config,
+                "You extract translation glossary terms and return strict JSON only.",
+                prompt,
+                max_retries=2,
+                max_tokens=1200,
+            )
+        else:
+            content = await translate_with_openai_format(
+                config,
+                "You extract translation glossary terms and return strict JSON only.",
+                prompt,
+                max_retries=2,
+                max_tokens=1200,
+                response_format={"type": "json_object"},
+            )
+            if not content:
+                content = await translate_with_openai_format(
+                    config,
+                    "You extract translation glossary terms and return strict JSON only.",
+                    prompt,
+                    max_retries=2,
+                    max_tokens=1200,
+                )
+        if not content:
+            return
+        content = content.strip()
         if content.startswith("```json"):
             content = content[7:-3]
         elif content.startswith("```"):
             content = content[3:-3]
-        terms = json.loads(content)
+        parsed = json.loads(content)
+        terms = parsed.get("terms") or parsed.get("results") or parsed.get("data") if isinstance(parsed, dict) else parsed
+        if not isinstance(terms, list):
+            return
         for term in terms:
             db.add(Terminology(
                 project_id=project_id,
@@ -151,11 +203,15 @@ def _tag_css_path(tag, soup) -> str:
 
 def _collect_epub_text_tags(soup: BeautifulSoup):
     tags = []
-    for tag in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "div"]):
+    for tag in soup.find_all(EPUB_TEXT_TAGS):
         text = tag.get_text().strip()
         if len(text) < 2:
             continue
+        if tag.find_parent(["script", "style", "nav"]):
+            continue
         if tag.parent and tag.parent.name in ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li"]:
+            continue
+        if tag.name == "div" and tag.find(EPUB_CONTAINER_TAGS, recursive=True):
             continue
         tags.append(tag)
     return tags
@@ -174,10 +230,11 @@ async def parse_epub_to_db(file_path: str, project_id: str, db: AsyncSession):
 
     chapter_order = 0
     sample_text_for_terms = ""
-    for item in book.get_items():
-        if item.get_type() != ebooklib.ITEM_DOCUMENT:
-            continue
+    for item in _iter_epub_document_items(book):
         soup = BeautifulSoup(item.get_content(), "html.parser")
+        if EPUB_SKIP_NAV_DOCS and _is_epub_nav_document(item, soup):
+            logger.info(f"Skipping EPUB navigation-like document: {item.get_name()}")
+            continue
         title_tag = soup.find(["h1", "h2", "h3", "title"])
         chapter_title = title_tag.get_text().strip() if title_tag else f"Chapter {chapter_order + 1}"
 
@@ -196,23 +253,28 @@ async def parse_epub_to_db(file_path: str, project_id: str, db: AsyncSession):
             text = tag.get_text().strip()
             if len(text) < 2:
                 continue
-            meta = {
-                "format": "epub_tag",
-                "item_id": item.get_id() or item.get_name() or "",
-                "tag_name": tag.name,
-                "css_path": _tag_css_path(tag, soup),
-            }
-            db.add(Segment(
-                id=f"{chapter_id}_seg_{segment_order}",
-                chapter_id=chapter_id,
-                order_index=segment_order,
-                html_tag=json.dumps(meta, ensure_ascii=False),
-                original_text=text,
-                status="pending",
-            ))
-            if len(sample_text_for_terms) < 2000:
-                sample_text_for_terms += text + "\n"
-            segment_order += 1
+            chunks = _split_long_text(text, EPUB_SEGMENT_MAX_CHARS)
+            css_path = _tag_css_path(tag, soup)
+            for split_index, chunk in enumerate(chunks):
+                meta = {
+                    "format": "epub_tag",
+                    "item_id": item.get_id() or item.get_name() or "",
+                    "tag_name": tag.name,
+                    "css_path": css_path,
+                    "split_index": split_index,
+                    "split_count": len(chunks),
+                }
+                db.add(Segment(
+                    id=f"{chapter_id}_seg_{segment_order}",
+                    chapter_id=chapter_id,
+                    order_index=segment_order,
+                    html_tag=json.dumps(meta, ensure_ascii=False),
+                    original_text=chunk,
+                    status="pending",
+                ))
+                segment_order += 1
+                if len(sample_text_for_terms) < 8000:
+                    sample_text_for_terms += chunk + "\n"
         chapter_order += 1
 
     if sample_text_for_terms:

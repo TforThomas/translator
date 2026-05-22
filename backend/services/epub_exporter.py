@@ -11,6 +11,9 @@ from backend.models.models import Project, Chapter, Segment
 
 logger = logging.getLogger(__name__)
 
+EPUB_TEXT_TAGS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "div"]
+EPUB_CONTAINER_TAGS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "div", "section", "article"]
+
 
 def _tag_css_path(tag, soup) -> str:
     parts = []
@@ -45,14 +48,27 @@ def _find_by_css_path(soup, css_path: str):
 
 def _collect_epub_text_tags(soup: BeautifulSoup):
     tags = []
-    for tag in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "div"]):
+    for tag in soup.find_all(EPUB_TEXT_TAGS):
         text = tag.get_text().strip()
         if len(text) < 2:
             continue
+        if tag.find_parent(["script", "style", "nav"]):
+            continue
         if tag.parent and tag.parent.name in ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li"]:
+            continue
+        if tag.name == "div" and tag.find(EPUB_CONTAINER_TAGS, recursive=True):
             continue
         tags.append(tag)
     return tags
+
+
+def _segment_text(seg: Segment) -> str:
+    return seg.translated_text if seg.translated_text else (seg.original_text or "")
+
+
+def _join_split_texts(project: Project, parts: list[str]) -> str:
+    joiner = "" if (project.target_lang or "").lower() in {"zh", "ja", "ko"} else " "
+    return joiner.join(p.strip() for p in parts if p is not None).strip()
 
 
 async def export_epub(project_id: str, db: AsyncSession, output_path: str, mode: str = "replace"):
@@ -83,28 +99,31 @@ async def export_epub(project_id: str, db: AsyncSession, output_path: str, mode:
 
                 soup = BeautifulSoup(item.get_content(), "html.parser")
 
-                meta_segs = []
+                meta_groups = {}
                 fallback_segs = []
                 for s in segments:
                     if s.html_tag and s.html_tag.startswith("{"):
                         try:
                             meta = json.loads(s.html_tag)
                             if meta.get("format") == "epub_tag" and meta.get("css_path"):
-                                meta_segs.append((s, meta))
+                                key = meta.get("css_path")
+                                meta_groups.setdefault(key, []).append((s, meta))
                                 continue
                         except Exception:
                             pass
                     fallback_segs.append(s)
 
                 used_tag_ids = set()
-                for s, meta in meta_segs:
+                for _css_path, group in meta_groups.items():
+                    group.sort(key=lambda item: (int(item[1].get("split_index", 0)), item[0].order_index))
+                    s, meta = group[0]
                     tag = _find_by_css_path(soup, meta.get("css_path") or "")
                     if not tag:
-                        fallback_segs.append(s)
+                        fallback_segs.extend(seg for seg, _ in group)
                         continue
-                    text = s.translated_text if s.translated_text else s.original_text
+                    text = _join_split_texts(project, [_segment_text(seg) for seg, _ in group])
                     if mode == "bilingual" and s.translated_text and s.original_text:
-                        original = s.original_text
+                        original = _join_split_texts(project, [seg.original_text or "" for seg, _ in group])
                         tag.clear()
                         tag.append(text or "")
                         new_p = soup.new_tag(meta.get("tag_name") or "p")
@@ -120,7 +139,7 @@ async def export_epub(project_id: str, db: AsyncSession, output_path: str, mode:
                     for i, s in enumerate(fallback_segs):
                         if i >= len(text_tags):
                             break
-                        text = s.translated_text if s.translated_text else s.original_text
+                        text = _segment_text(s)
                         text_tags[i].clear()
                         text_tags[i].append(text or "")
 
@@ -151,20 +170,45 @@ async def export_epub(project_id: str, db: AsyncSession, output_path: str, mode:
         segments = (await db.execute(
             select(Segment).where(Segment.chapter_id == chapter.id).order_by(Segment.order_index)
         )).scalars().all()
+        consumed_paths = set()
         for seg in segments:
             tag_name = "p"
+            split_index = 0
+            split_count = 1
+            css_path = ""
             try:
                 if seg.html_tag and seg.html_tag.startswith("{"):
-                    tag_name = json.loads(seg.html_tag).get("tag_name", "p")
+                    meta = json.loads(seg.html_tag)
+                    tag_name = meta.get("tag_name", "p")
+                    split_index = int(meta.get("split_index", 0))
+                    split_count = int(meta.get("split_count", 1))
+                    css_path = meta.get("css_path") or ""
                 elif seg.html_tag:
                     tag_name = seg.html_tag
             except Exception:
                 pass
-            text = seg.translated_text if seg.translated_text else seg.original_text
+            if split_count > 1 and css_path:
+                if split_index > 0 or css_path in consumed_paths:
+                    continue
+                parts = []
+                for other in segments:
+                    try:
+                        ometa = json.loads(other.html_tag) if other.html_tag and other.html_tag.startswith("{") else {}
+                    except Exception:
+                        ometa = {}
+                    if ometa.get("css_path") == css_path:
+                        parts.append((int(ometa.get("split_index", 0)), other))
+                parts.sort(key=lambda item: item[0])
+                text = _join_split_texts(project, [_segment_text(other) for _, other in parts])
+                original_text = _join_split_texts(project, [other.original_text or "" for _, other in parts])
+                consumed_paths.add(css_path)
+            else:
+                text = _segment_text(seg)
+                original_text = seg.original_text or ""
             text = html.escape(text or "")
             content += f"<{tag_name}>{text}</{tag_name}>\n"
             if mode == "bilingual" and seg.translated_text and seg.original_text:
-                content += f"<{tag_name} class=\"orig\">{html.escape(seg.original_text)}</{tag_name}>\n"
+                content += f"<{tag_name} class=\"orig\">{html.escape(original_text)}</{tag_name}>\n"
         c.content = content
         book.add_item(c)
         epub_chapters.append(c)

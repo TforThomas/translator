@@ -23,6 +23,7 @@ export interface ProjectSummary {
   status: ProjectStatus;
   progress: number;
   created_at: string;
+  genre?: "novel" | "academic" | "technical" | "general";
 }
 
 export interface ChapterStatus {
@@ -37,6 +38,7 @@ export interface ProjectDetail {
   id: string;
   name: string;
   source_file_type?: "epub" | "pdf";
+  genre?: "novel" | "academic" | "technical" | "general";
   progress: number;
   status: ProjectStatus;
   chapters: ChapterStatus[];
